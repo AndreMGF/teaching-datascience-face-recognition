@@ -1,0 +1,205 @@
+import numpy as np
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import pickle
+import face_recognition
+from PIL import Image, ImageDraw
+from io import BytesIO
+import base64
+import os
+import datetime
+import glob
+
+app = Flask(__name__)
+CORS(app)
+
+# Carregar dados de reconhecimento de faces
+#print('Carregando o modelo')
+#model = pickle.load(open('model.pkl','rb'))
+
+
+
+# Convert Base64 to Image
+def convertBase64ToPILImage(base64Data):
+    buff = BytesIO(base64.b64decode(base64Data))
+    return Image.open(buff)
+
+def convertBase64ToFaceRecognitionImage(base64Image):
+	'''
+	This function convert an image in base64 format
+	in a face recognition image
+	'''
+	buff = BytesIO(base64.b64decode(base64Image))
+	return face_recognition.load_image_file(buff)
+
+def removeBase64HTMLStringPrefix(base64HTMLString):
+	'''
+
+	'''	
+	return base64HTMLString.decode().split(',')[1]
+
+def converBase64StringToBase64(base64String):
+	'''
+	
+	'''
+	return base64String.encode();
+
+def prepareImage(request_data):
+	'''
+	
+	'''	
+	x = removeBase64HTMLStringPrefix(request_data)
+	x = converBase64StringToBase64(x)
+	return x 
+
+def drawFaces(image, faceLocations):
+	'''
+	
+	'''
+	pil_image = Image.fromarray(image)
+	draw = ImageDraw.Draw(pil_image)
+	for (top, right, bottom, left) in faceLocations:
+		draw.rectangle(((left, top), (right, bottom)), outline=(0, 0, 255))
+	del draw
+	return pil_image;
+
+def cropFace(image, faceLocation):
+	'''
+	
+	'''
+	pil_image = Image.fromarray(image)
+	top, right, bottom, left = faceLocation
+	return pil_image.crop(( left, top, right, bottom ))
+
+def convertImageToBase64String(image):
+	'''
+	
+	'''	
+	buff = BytesIO()
+	image.save(buff, format="PNG")
+	img_str = base64.b64encode(buff.getvalue())
+	return img_str
+
+def saveImage(image, filepath):	
+	with open(filepath, "wb") as fh:
+		fh.write(base64.decodebytes(image))
+
+def loadImages():
+	from pathlib import Path
+	filenames = [] 
+	encodings = []
+	for filename in Path('images').glob('**/faceimg_*.png'):		
+		x = face_recognition.load_image_file(filename)
+		x = face_recognition.face_encodings(x)
+		filenames.append(filename)
+		encodings.append(x[0])
+	return filenames, encodings		
+
+filenames, all_encodings = loadImages()
+
+@app.route('/facedetection', methods=['POST'])
+def facedetection():
+
+	print('Recebendo os dados via POST')
+
+	image = prepareImage(request.data);
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(image)
+
+	face_locations = face_recognition.face_locations(face_recognition_image)
+
+	image_with_faces = drawFaces(face_recognition_image, face_locations)
+
+	image_with_faces_str = convertImageToBase64String(image_with_faces);
+
+	return image_with_faces_str
+
+@app.route('/getname', methods=['POST'])
+def getname():
+
+	print('Recebendo os dados via POST')
+
+	image = prepareImage(request.data);
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(image)
+
+	face_locations = face_recognition.face_locations(face_recognition_image)
+	#print(face_locations)
+	face_encodings = face_recognition.face_encodings(face_recognition_image, face_locations)
+
+	results = face_recognition.compare_faces(all_encodings,face_encodings[0])
+
+	print([filenames[i] for i in range(len(filenames)) if results[i] ])
+ 
+
+
+	image_face = cropFace(face_recognition_image, face_locations[0])
+
+	image_face_str = convertImageToBase64String(image_face)
+
+	return image_face_str
+
+
+@app.route('/facecrop', methods=['POST'])
+def facecrop():
+
+	print('Recebendo os dados via POST')
+
+	image = prepareImage(request.data);
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(image)
+
+	face_locations = face_recognition.face_locations(face_recognition_image)
+	
+	#face_encodings = face_recognition.face_encodings(image, face_locations)
+
+	#print(face_recognition.compare_faces(face_encodings,face_encodings[1] ))
+
+	image_face = cropFace(image, face_locations[0])
+
+	image_face_str = convertImageToBase64String(image_face)
+
+	return image_face_str
+
+
+@app.route('/createface', methods=['POST'])
+def createface():
+
+	print('Recebendo os dados via POST')
+	data = request.get_json(force=True)	
+	form_name = data['name']
+	form_img = data['img']
+
+	base64Image = prepareImage(form_img.encode());
+			
+	dirpath = 'images/' + form_name 
+	try:
+		os.mkdir(dirpath)
+	except:		
+		print('Diretório já existente')
+
+	filename = '/img_' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.png'
+	filepath = dirpath + filename
+	saveImage(base64Image, filepath)
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(base64Image)
+	
+	face_locations = face_recognition.face_locations(face_recognition_image)	
+	
+	image_face = cropFace(face_recognition_image, face_locations[0])
+		
+	image_face_str = convertImageToBase64String(image_face)
+	
+	#base64ImageFace = converBase64StringToBase64(image_face_str)
+	
+	filename = '/faceimg_' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.png'
+	filepath = dirpath + filename
+	saveImage(image_face_str, filepath)
+
+	output = jsonify(0)
+	return output
+	
+    
+
+if __name__ == '__main__':
+    app.run(port=3000, debug=True)

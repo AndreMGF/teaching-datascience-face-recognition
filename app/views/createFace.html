@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Display Webcam Stream</title>
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+ 
+</head>
+ 
+<body>
+  <div class="card-deck my-1 justify-content-around border">
+    <div class="col-12 col-sm-4 p-2 h-100">
+      <div class="card text-center">
+        <div class="card-header">Webcam</div>
+        <div class="card-body">          
+          <video autoplay="true" id="videoElement" class="col-12 p-0 m-0"></video>
+        </div>
+      </div>        
+    </div>
+    <div class="col-12 col-sm-4 p-2 h-100">
+      <div class="card text-center">
+        <div class="card-header">Image Captured</div>
+        <div class="card-body">
+          <label for="name">Nome</label>
+          <input type="text" id="name" class="form-control mb-2">
+          <canvas id="canvas" class="col-12 p-0 m-0"></canvas>
+          <button type="button" id="cadastrar" class="btn btn-success">Cadastrar</button>
+        </div>
+      </div>          
+    </div>   
+
+  </div>
+
+</body>
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<script>
+var video = document.querySelector("#videoElement");
+var canvas = document.getElementById('canvas');
+var context = canvas.getContext('2d');
+
+if (navigator.mediaDevices.getUserMedia) {
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function (stream) {
+      video.srcObject = stream;
+    })
+    .catch(function (error) {
+      console.log("Something went wrong!");
+    });
+}
+
+$(document).ready(function(){
+
+  video.width = 320;
+  video.height = 200;
+  canvas.width = 320;
+  canvas.height = 200 * 1.25;
+
+  $("#videoElement").click( function(){
+    var stream = video.srcObject;
+    console.log(stream);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  })
+
+
+  $('#cadastrar').click( function(){
+    var imgData = canvas.toDataURL();
+
+    var xhr = new XMLHttpRequest();
+
+    xhr.onreadystatechange = function(){
+        if(xhr.readyState === 4 && xhr.status === 200){
+            //var img = "data:image/png;base64," + xhr.responseText;            
+            //$("#facedetection").attr('src', img);
+        } 
+    }
+
+    xhr.onerror = function(){
+      console.log('Erro');
+    }
+
+    url = 'http://localhost:3000/createface';
+    xhr.open('POST', url);
+
+    var jsonData = {'name': $('#name').val(), 'img' : imgData}
+    var jsonObject = JSON.stringify(jsonData);
+    xhr.send(jsonObject);
+
+  })
+  
+})
+
+
+</script>
+
+</html>
