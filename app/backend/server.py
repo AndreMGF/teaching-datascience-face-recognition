@@ -9,6 +9,7 @@ import base64
 import os
 import datetime
 import glob
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -87,13 +88,21 @@ def saveImage(image, filepath):
 def loadImages():
 	from pathlib import Path
 	filenames = [] 
-	encodings = []
+	encodings = []	
 	for filename in Path('images').glob('**/faceimg_*.png'):		
 		x = face_recognition.load_image_file(filename)
 		x = face_recognition.face_encodings(x)
 		filenames.append(filename)
-		encodings.append(x[0])
-	return filenames, encodings		
+		encodings.append(x[0])	
+	return filenames, encodings	
+
+def saveInfo(info, filepath):
+	with open(filepath, 'w') as outfile:
+		json.dump(info, outfile)
+
+def loadInfo(filepath):
+	with open(filepath, 'r') as outfile:
+		return json.load(outfile)
 
 filenames, all_encodings = loadImages()
 
@@ -199,7 +208,105 @@ def createface():
 	output = jsonify(0)
 	return output
 	
+
+@app.route('/person/add', methods=['POST'])
+def person_add():
+
+	print('Recebendo os dados via POST')
+	data = request.get_json(force=True)	
+
+	form_info = data['info']
+	print(form_info)
+	form_name = form_info['nome']
+	form_img = data['img']
+
+	base64Image = prepareImage(form_img.encode());
+			
+	dirpath = 'images/' + form_name 
+	try:
+		os.mkdir(dirpath)
+	except:		
+		print('Diretório já existente')
+
+	filename = '/img_' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.png'
+	filepath = dirpath + filename
+	saveImage(base64Image, filepath)
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(base64Image)
+	
+	face_locations = face_recognition.face_locations(face_recognition_image)	
+	
+	image_face = cropFace(face_recognition_image, face_locations[0])
+		
+	image_face_str = convertImageToBase64String(image_face)
+		
+	filename = '/faceimg_' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.png'
+	filepath = dirpath + filename
+	saveImage(image_face_str, filepath)
+
+	filepath = dirpath + "/info.json"
+	saveInfo(form_info, filepath)
+
+	output = jsonify(0)
+	return output
     
+@app.route('/recognize', methods=['POST'])
+def recognize():
+
+	print('Recebendo os dados via POST')
+
+	data = request.get_json(force=True)	
+	form_img = data['img']
+
+	base64Image = prepareImage(form_img.encode());
+
+	face_recognition_image = convertBase64ToFaceRecognitionImage(base64Image)
+
+	face_locations = face_recognition.face_locations(face_recognition_image)
+
+	if (len(face_locations) == 0):
+		return jsonify({
+			'result' : 'error',
+			'msg' : 'Não foi encontrada nenhuma face na imagem'
+			});
+
+	if (len(face_locations) > 1):
+		return jsonify({
+			'result' : 'error',
+			'msg' : 'Foram encontradas mais do que uma face na imagem'
+			});
+
+	face_encodings = face_recognition.face_encodings(face_recognition_image, face_locations)
+
+	faces_comparison = face_recognition.compare_faces(all_encodings,face_encodings[0])
+
+	filenames_true = [filenames[i] for i in range(len(filenames)) if faces_comparison[i] ]
+	dirnames_true = [os.path.dirname(filename) for filename in filenames_true]
+	print('dirnames_true', dirnames_true)
+	print('dirnames_true set', set(dirnames_true) )
+	persons = set(dirnames_true)
+
+	if (len(persons) == 0) :
+		return jsonify({
+			'result' : 'error',
+			'msg' : 'O rosto encontrado não foi encontrado na base de dados'
+			});
+
+	if (len(persons) > 1):
+		return jsonify({
+			'result' : 'error',
+			'msg' : 'Foram encontradas mais do que uma face parecida para esse rosto'
+			});
+
+	dirpath = dirnames_true[0]
+	filepath = dirpath + "/info.json"
+		
+	info = loadInfo(filepath)
+
+	return jsonify({
+		'result' : 'success',
+		'info' : info
+		})
 
 if __name__ == '__main__':
     app.run(port=3000, debug=True)

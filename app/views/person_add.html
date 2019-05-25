@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Add Person</title>
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> 
+</head>
+ 
+<body>
+  <div class="card-deck my-1 justify-content-center border">    
+    <div class="col-12 col-sm-8 p-2 h-100">
+      <div class="card text-left">
+        <div class="card-header">Formuário de Dados</div>
+        <div class="card-body">
+          <form>
+            <div class="form-group">
+              <label for="matricula">Matrícula</label>
+              <input type="numeric" class="form-control" id="matricula" placeholder="1234" required>
+            </div>
+            <div class="form-group">
+              <label for="nome">Nome Completo</label>
+              <input type="text" class="form-control" id="nome" placeholder="João de Silva" required>
+            </div>
+            <div class="form-group">
+              <label for="rg">RG</label>
+              <input type="text" class="form-control" id="rg" placeholder="XYZ">
+            </div>            
+            <div class="form-group">
+              <label for="rg">CPF</label>
+              <input type="text" class="form-control" id="cpf" placeholder="XYZ">
+            </div>
+            <div class="form-group">
+              <label for="rg">E-mail</label>
+              <input type="email" class="form-control" id="email" placeholder="XYZ">
+            </div>
+            <div class="form-group p-0 row justify-content-center">
+              <div class="col-12">
+                <div class="card text-center m-0 h-100">
+                  <div class="card-header p-1">Webcam</div>                    
+                  <div class="card-body p-1 m-0">              
+                    <video autoplay="true" id="webcam" class="align-middle p-0 m-0"></video>
+                    <canvas id="canvasCapture" class='border' hidden="hidden"></canvas>
+                  </div>
+                </div> 
+              </div>              
+            </div>
+            <button type="button" class="btn btn-primary btn-block" id="save">Salvar</button>
+          </form>                  
+        </div>
+      </div>          
+    </div>
+  </div>
+
+
+
+</body>
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<script>
+
+$(document).ready(function(){
+
+  var video = document.getElementById("webcam");
+  var canvasCapture = document.getElementById("canvasCapture");
+
+  if (navigator.mediaDevices.getUserMedia) {  
+    navigator.mediaDevices.getUserMedia({ video : true })
+      .then(function (stream) {
+        video.srcObject = stream;          
+        video.width = 320
+        video.height = 240
+        canvasCapture.width = 320
+        canvasCapture.height = 240
+      })
+      .catch(function (error) {
+        console.log("Something went wrong!");
+      });
+  }
+  
+  $("#webcam").click( function(){
+
+    if ( $("#webcam").get(0).paused )
+      
+      $("#webcam").get(0).play();
+
+    else
+
+      $("#webcam").get(0).pause();
+
+  })
+
+
+  $('#save').click( function(){
+
+    context = $('#canvasCapture').get(0).getContext('2d');
+    context.drawImage(video, 0, 0, video.width, video.height );
+    var imgData = $('#canvasCapture').get(0).toDataURL();    
+
+    var xhr = new XMLHttpRequest();
+
+    xhr.onreadystatechange = function(){
+        if(xhr.readyState === 4 && xhr.status === 200){
+            alert('Pessoa cadastrado com sucesso.');
+        } 
+    }
+
+    xhr.onerror = function(){
+      console.log('Erro');
+    }
+
+    url = 'http://localhost:3000/person/add';
+    xhr.open('POST', url);
+
+    var jsonData = {
+      'info': {
+        'nome' : $('#nome').val(),
+        'matricula' : $('#matricula').val(),
+        'rg' : $('#rg').val(),
+        'cpf' : $('#cpf').val(),
+        'email' : $('#email').val()
+      },
+      'img' : imgData
+      }
+
+    var jsonObject = JSON.stringify(jsonData);
+    xhr.send(jsonObject);
+
+  })
+  
+})
+
+
+</script>
+
+</html>
