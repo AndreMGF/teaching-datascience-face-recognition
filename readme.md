@@ -38,16 +38,16 @@ $ python server.py
 
 Pronto. Agora tem um servidor aguardando por requisições HTTP que realiza as operações da nossa aplicação. As requisições suportadas pela aplicação são:
 * `/person/add` (POST) que adiciona uma *Pessoa* à base de dados
-* `/person/edit` (POST) que edita uma *Pessoa* da base de dados
-* `/person/delete` (POST) que remove uma *Pessoa* da base de dados
-* `/person/get` (POST) que recupera uma *Pessoa* da base de dados
+* `/person/edit` (POST) que edita uma *Pessoa* da base de dados (em desenvolvimento)
+* `/person/delete` (POST) que remove uma *Pessoa* da base de dados (em desenvolvimento)
+* `/person/get` (POST) que recupera uma *Pessoa* da base de dados (em desenvolvimento)
 * `/recognizer/get` (POST) que retorna uma *Pessoa* da base de dados para uma imagem enviada via POST.
 
 Também foram desenvolvidas as páginas seguintes páginas para mostrar como ocorrem essas requisições.
 * `views/person_add.html`
-* `views/person_edit.html`
-* `views/person_list.html`
-* `views/person_get.html`
+* `views/person_edit.html` (em desenvolvimento)
+* `views/person_list.html` (em desenvolvimento)
+* `views/person_get.html` (em desenvolvimento)
 * `views/recognizer.html`
 
 ## Desenvolvimento
